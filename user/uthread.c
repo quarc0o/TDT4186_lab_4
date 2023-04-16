@@ -4,22 +4,24 @@
 #define LIB_PREFIX "[UTHREAD]: "
 #define ulog() printf("%s%s\n", LIB_PREFIX, __FUNCTION__)
 
-static struct thread *threads[16];
-static struct thread *current_thread;
+struct thread *threads[16];
+struct thread *current_thread;
+
+static int next_tid = 1;
 
 void tsched()
 {
     // TODO: Implement a userspace round robin scheduler that switches to the next thread
-
+    struct thread *next_thread = NULL;
     int current_index = 0;
-    for (int i = 0; i < 16; i++) {
-        if (threads[i] == current_thread) {
-            current_index = i;
+    for (int i = 1; i < 16; i++) {
+        int next_index = (current_index + i) % 16;
+        if (threads[next_index] && threads[next_index]->state == RUNNABLE) {
+            next_thread = threads[next_index];
             break;
         }
     }
 
-    struct thread *next_thread = NULL;
     for (int i = 0; i < 16; i++) {
         if ((current_index + i) > 16) {
             break;
@@ -34,7 +36,9 @@ void tsched()
     if (next_thread) {
         struct thread *prev_thread = current_thread;
         current_thread = next_thread;
+        printf("Switching from thread %d to thread %d\n", prev_thread->tid, current_thread->tid);
         tswtch(&prev_thread->tcontext, &current_thread->tcontext);
+        printf("Thread switch complete\n");
     }
 }
 
@@ -50,16 +54,45 @@ void tcreate(struct thread **thread, struct thread_attr *attr, void *(*func)(voi
     (*thread)->state = RUNNABLE;
     (*thread)->func = func;
     (*thread)->arg = arg;
-    //(*thread)->next = 0;
-    //(*thread)->tid = func;
+    (*thread)->tid = next_tid;
+    next_tid += 1;
+    for (int i = 0; i < 16; i++) {
+    if (threads[i] == NULL) {
+        threads[i] = *thread;
+        printf("Thread %d created and added to scheduler\n", (*thread)->tid);
+        break;
+    }
+}
+
 }
 
 int tjoin(int tid, void *status, uint size)
 {
-    // TODO: Wait for the thread with TID to finish. If status and size are non-zero,
-    // copy the result of the thread to the memory, status points to. Copy size bytes.
+    struct thread *target_thread = NULL;
+    for (int i = 0; i < 16; i++) {
+        if (threads[i] && threads[i]->tid == tid) {
+            target_thread = threads[i];
+            break;
+        }
+    }
+
+    if (!target_thread) {
+        return -1;
+    }
+
+    while (target_thread->state != EXITED) {
+        printf("Waiting for thread %d to exit\n", target_thread->tid);
+        tsched();
+    }
+
+
+    /* if (status && size > 0) {
+        memcpy(status, target_thread->tcontext.sp, size);
+    } */
+
     return 0;
 }
+
 
 void tyield()
 {
@@ -71,5 +104,6 @@ void tyield()
 uint8 twhoami()
 {
     // TODO: Returns the thread id of the current thread
+    return current_thread->tid;
     return 0;
 }
