@@ -8,8 +8,6 @@
 extern struct thread *threads[16];
 extern struct thread *current_thread;
 extern int next_tid;
-extern void tinit();
-
 
 
 //
@@ -20,9 +18,7 @@ void _main(int argc, char *argv[])
     // TODO: Ensure that main also is taken into consideration by the thread scheduler
     // TODO: This function should only return once all threads have finished running
 
-    tinit();
-
-    /* // Initialize main thread
+    // Initialize main thread
     struct thread *main_thread = (struct thread *)malloc(sizeof(struct thread));
 
     main_thread->tid = 1;
@@ -36,30 +32,12 @@ void _main(int argc, char *argv[])
     }
 
     // Set the main thread as the first element in the threads array
-    threads[0] = main_thread; */
+    threads[0] = main_thread;
     
 
     extern int main(int argc, char *argv[]);
     int res = main(argc, argv);
     //tsched();
-
-
-
-    // Wait for all other threads to finish
-    /* int running_threads = 1;
-    while (running_threads > 0) {
-        running_threads = 0;
-        for (int i = 0; i < 16; i++) {
-            if (threads[i] != NULL && threads[i]->state != RUNNABLE) {
-                printf("Added a running thread");
-                running_threads++;
-            }
-        }
-        printf("Number of running threads: %d\n", running_threads);
-        if (running_threads > 0) {
-            tsched(); // Schedule another thread to run
-        }
-    } */
 
     exit(res);
 }

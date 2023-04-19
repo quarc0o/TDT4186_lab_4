@@ -9,38 +9,14 @@ struct thread *current_thread;
 
 int next_tid = 1;
 
+
+
 void thread_wrapper()
 {
-    uint64 *stack_ptr = (uint64 *)current_thread->tcontext.sp;
-
-    void *(*func)(void *) = (void *(*)(void *))(*stack_ptr);
-    stack_ptr++;
-    void *arg = (void *)(*stack_ptr);
-
-    func(arg);
+    current_thread->func(current_thread->arg);
     current_thread->state = EXITED;
     tsched();
 }
-
-void tinit() {
-    // Initialize main thread
-    struct thread *main_thread = (struct thread *)malloc(sizeof(struct thread));
-
-    main_thread->tid = next_tid;
-    next_tid += 1;
-    main_thread->state = RUNNING;
-    current_thread = main_thread;
-
-    // Clear the thread list
-    for (int i = 0; i < 16; i++) {
-        threads[i] = NULL;
-    }
-
-    // Set the main thread as the first element in the threads array
-    threads[0] = main_thread;
-}
-
-
 
 void tsched()
 {
@@ -85,41 +61,22 @@ void tcreate(struct thread **thread, struct thread_attr *attr, void *(*func)(voi
     *thread = (struct thread *)malloc(sizeof(struct thread));
 
 
+    // Setup
     (*thread)->state = RUNNABLE;
     (*thread)->func = func;
     (*thread)->arg = arg;
     (*thread)->tid = next_tid;
     next_tid += 1;
-    //(*thread)->tcontext.sp = (uint64)malloc(4096) + 4096;
-    //(*thread)->tcontext.ra = (uint64)thread_wrapper;
-
-    // Allocate stack memory for the thread
-    uint64 stack_top = (uint64)malloc(4096) + 4096;
-
-    // Place the function pointer and its argument on the top of the stack
-    stack_top -= sizeof(uint64);
-    *(uint64 *)stack_top = (uint64)arg;
-    stack_top -= sizeof(uint64);
-    *(uint64 *)stack_top = (uint64)func;
-
-    (*thread)->tcontext.sp = stack_top;
+    (*thread)->tcontext.sp = (uint64)malloc(4096) + 4096;
     (*thread)->tcontext.ra = (uint64)thread_wrapper;
 
-    int thread_added = 0;
+    // Add the new thread to the threads array
     for (int i = 0; i < 16; i++) {
         if (threads[i] == NULL) {
             threads[i] = *thread;
             //printf("Thread %d created and added to scheduler\n", (*thread)->tid);
-            thread_added = 1;
             break;
         }
-    }
-
-    // If there are already 16 threads, return without creating a new one
-    if (!thread_added) {
-        free(*thread);
-        *thread = NULL;
-        return;
     }
 }
 
