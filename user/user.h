@@ -106,6 +106,7 @@ struct thread
     enum procstate state;
     void *arg;
     void *(*func)(void *);
+    void *ret;
 
     // Feel free to add more fields as needed
 };
